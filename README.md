@@ -21,8 +21,6 @@ a model trained against it learns to exploit it. Tripwire measures how often tha
 
 Early work. Numbers will be added only once they are measured.
 
-## Related work
+## Data
 
-- [evalmut](https://github.com/egnaro9/evalmut) applies mutation testing to rule-based eval graders (no LLM judge).
-  Tripwire focuses on LLM judges and execution-based SQL graders on a real benchmark.
-- BIRD Mini-Dev ([bird-bench/mini_dev](https://github.com/bird-bench/mini_dev)), CC BY-SA 4.0.
+BIRD Mini-Dev ([bird-bench/mini_dev](https://github.com/bird-bench/mini_dev)), CC BY-SA 4.0.
