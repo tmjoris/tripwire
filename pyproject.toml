@@ -1,0 +1,21 @@
+[project]
+name = "tripwire"
+version = "0.1.0"
+description = "Tests AI graders by slipping them answers that look right but are not"
+readme = "README.md"
+authors = [
+    { name = "tmjoris", email = "tangajoris@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "sqlglot>=30.33.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.8,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
