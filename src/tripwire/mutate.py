@@ -118,11 +118,13 @@ MUTANTS: dict[str, Operator] = {
 
 def rename_aliases(tree):
     """Rename table aliases (T1 -> t_1): same query, different spelling."""
-    aliases = {a.this.name: f"t_{i}" for i, a in enumerate(tree.find_all(exp.TableAlias), 1) if a.this}
+    # Only aliases of real tables: renaming a CTE or subquery name would also need every reference to it renamed.
+    table_aliases = [a for a in tree.find_all(exp.TableAlias) if a.this and isinstance(a.parent, exp.Table)]
+    aliases = {a.this.name: f"t_{i}" for i, a in enumerate(table_aliases, 1)}
     if not aliases:
         return None
-    for a in tree.find_all(exp.TableAlias):
-        if a.this and a.this.name in aliases:
+    for a in table_aliases:
+        if a.this.name in aliases:
             a.set("this", exp.to_identifier(aliases[a.this.name]))
     for col in tree.find_all(exp.Column):
         if col.table in aliases:

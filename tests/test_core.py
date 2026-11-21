@@ -111,3 +111,10 @@ def test_flip_order_passes_bird_set_match_but_fails_strict(db):
 def test_variants_lists_both_kinds():
     kinds = {k for k, _, _ in variants(Q)}
     assert kinds == {"mutant", "equivalent"}
+
+
+def test_rename_aliases_leaves_cte_names_alone(db):
+    sql = "WITH n AS (SELECT name FROM customer AS c WHERE c.city = 'Nairobi') SELECT name FROM n ORDER BY name"
+    out = apply(EQUIVALENTS["rename_aliases"], sql)
+    assert out is not None and "WITH n AS" in out
+    assert rows(db, out) == rows(db, sql)
