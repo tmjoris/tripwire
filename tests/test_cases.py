@@ -58,3 +58,9 @@ def test_jsonl_round_trip(db, tmp_path):
     path = tmp_path / "cases.jsonl"
     write_jsonl(cases, path)
     assert read_jsonl(path) == cases
+
+
+def test_reversed_order_is_unclear_when_the_question_does_not_ask_for_order(db):
+    question = Question(2, "shop", "Names of Nairobi customers", "", "SELECT name FROM customer WHERE city = 'Nairobi' ORDER BY name", "simple", db)
+    flipped = next(c for c in build(question)[0] if c.op == "flip_order")
+    assert flipped.label == "unclear"
