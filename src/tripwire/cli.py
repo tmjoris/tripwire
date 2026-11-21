@@ -7,20 +7,18 @@ from collections import Counter
 from pathlib import Path
 
 from . import bird
-from .cases import build, write_jsonl
+from .cases import build_all, write_jsonl
 
 
 def cmd_build(args) -> None:
     questions = bird.load(Path(args.data))
     if args.limit:
         questions = questions[: args.limit]
-    all_cases, skipped = [], Counter()
-    for i, q in enumerate(questions, 1):
-        cases, sk = build(q, timeout_s=args.timeout)
-        all_cases += cases
-        skipped += sk
+    def progress(i, n):
         if i % 50 == 0:
-            print(f"  {i}/{len(questions)} questions, {len(all_cases)} cases")
+            print(f"  {i}/{len(questions)} questions, {n} cases", flush=True)
+
+    all_cases, skipped = build_all(questions, timeout_s=args.timeout, workers=args.workers, progress=progress)
     write_jsonl(all_cases, Path(args.out))
 
     print(f"\n{len(questions)} questions -> {len(all_cases)} cases, written to {args.out}")
@@ -30,6 +28,8 @@ def cmd_build(args) -> None:
     passes = Counter((c.op, c.kind) for c in all_cases if c.kind != "reference" and c.bird_ex)
     for (op, kind), n in sorted(rows.items(), key=lambda x: (x[0][1], x[0][0])):
         print(f"{op:<22}{kind:<12}{n:>6}{passes[(op, kind)]:>13}")
+    unclear = sum(c.label == "unclear" for c in all_cases)
+    print(f"\nunclear (reversed order, question doesn't clearly ask for one; needs a human label): {unclear}")
     wrong = [c for c in all_cases if c.label == "wrong"]
     free = sum(c.bird_ex for c in wrong)
     if wrong:
@@ -44,6 +44,7 @@ def main(argv=None) -> None:
     b.add_argument("--out", default="results/cases.jsonl")
     b.add_argument("--limit", type=int, default=0, help="only the first N questions (0 = all)")
     b.add_argument("--timeout", type=float, default=10.0, help="seconds per query")
+    b.add_argument("--workers", type=int, default=4, help="parallel processes")
     b.set_defaults(func=cmd_build)
     args = p.parse_args(argv)
     args.func(args)
