@@ -18,22 +18,25 @@ class Question:
     db_path: Path
 
 
-def find_root(data_dir: Path) -> Path:
-    """The folder that holds mini_dev_sqlite.json, wherever the zip put it."""
-    hits = sorted(data_dir.rglob("mini_dev_sqlite.json"))
-    if not hits:
-        raise FileNotFoundError(f"mini_dev_sqlite.json not found under {data_dir}; unzip BIRD Mini-Dev there first")
-    return hits[0].parent
+def find_questions(data_dir: Path) -> Path:
+    """The question file: BIRD's 2026 corrected .jsonl if present, else the 2024 .json from the zip."""
+    for pattern in ("mini_dev_sqlite.jsonl", "mini_dev_sqlite.json"):
+        hits = sorted(data_dir.rglob(pattern))
+        if hits:
+            return hits[0]
+    raise FileNotFoundError(f"no mini_dev_sqlite.jsonl/.json under {data_dir}; download BIRD Mini-Dev there first")
 
 
 def load(data_dir: Path) -> list[Question]:
-    root = find_root(data_dir)
-    dbs = {p.stem: p for p in root.rglob("*.sqlite")}
+    qfile = find_questions(data_dir)
+    dbs = {p.stem: p for p in data_dir.rglob("*.sqlite")}
+    text = qfile.read_text()
+    items = [json.loads(l) for l in text.splitlines() if l.strip()] if qfile.suffix == ".jsonl" else json.loads(text)
     out = []
-    for item in json.loads((root / "mini_dev_sqlite.json").read_text()):
+    for item in items:
         db = dbs.get(item["db_id"])
         if db is None:
-            raise FileNotFoundError(f"database {item['db_id']}.sqlite missing under {root}")
+            raise FileNotFoundError(f"database {item['db_id']}.sqlite missing under {data_dir}")
         out.append(Question(int(item["question_id"]), item["db_id"], item["question"], item.get("evidence", ""),
                             item["SQL"], item.get("difficulty", ""), db))
     return out

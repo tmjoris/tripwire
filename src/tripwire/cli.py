@@ -40,7 +40,7 @@ def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="tripwire", description="Test AI graders with look-alike wrong answers.")
     sub = p.add_subparsers(required=True)
     b = sub.add_parser("build", help="build labelled cases from BIRD Mini-Dev")
-    b.add_argument("--data", default="data/raw", help="folder that contains the unzipped BIRD Mini-Dev")
+    b.add_argument("--data", default="data", help="folder holding BIRD Mini-Dev (databases + question file)")
     b.add_argument("--out", default="results/cases.jsonl")
     b.add_argument("--limit", type=int, default=0, help="only the first N questions (0 = all)")
     b.add_argument("--timeout", type=float, default=10.0, help="seconds per query")
