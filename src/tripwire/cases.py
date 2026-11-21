@@ -27,6 +27,8 @@ ORDER_BUGS = {"flip_order"}
 ASKS_FOR_ORDER = re.compile(
     r"\b(descend|ascend|order|sort|rank|alphabetical|chronolog|respectively|highest to|lowest to|a to z|z to a|"
     r"from (the )?(highest|lowest|largest|smallest|most|least|top|earliest|latest|oldest|newest))", re.I)
+# Likewise, extra duplicate rows are only wrong if the question asks for distinct values.
+ASKS_FOR_DISTINCT = re.compile(r"\b(distinct|unique|different|no duplicates?|without duplicates?)\b", re.I)
 
 
 @dataclass
@@ -66,7 +68,9 @@ def build(q: Question, timeout_s: float = 10.0) -> tuple[list[Case], Counter]:
                 continue
             label = "correct"
         else:
-            if not same_rows:
+            if not same_rows and set_match(gold.rows, r.rows):     # same values, only duplicates differ
+                label = "wrong" if ASKS_FOR_DISTINCT.search(q.question) else "unclear"
+            elif not same_rows:
                 label = "wrong"
             elif op in ORDER_BUGS and ordered and not same_order:
                 label = "wrong" if ASKS_FOR_ORDER.search(q.question) else "unclear"

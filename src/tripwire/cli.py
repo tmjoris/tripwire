@@ -29,7 +29,7 @@ def cmd_build(args) -> None:
     for (op, kind), n in sorted(rows.items(), key=lambda x: (x[0][1], x[0][0])):
         print(f"{op:<22}{kind:<12}{n:>6}{passes[(op, kind)]:>13}")
     unclear = sum(c.label == "unclear" for c in all_cases)
-    print(f"\nunclear (reversed order, question doesn't clearly ask for one; needs a human label): {unclear}")
+    print(f"\nunclear (only order or duplicates differ, and the question doesn't clearly ask; needs a human label): {unclear}")
     wrong = [c for c in all_cases if c.label == "wrong"]
     free = sum(c.bird_ex for c in wrong)
     if wrong:

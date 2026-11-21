@@ -64,3 +64,15 @@ def test_reversed_order_is_unclear_when_the_question_does_not_ask_for_order(db):
     question = Question(2, "shop", "Names of Nairobi customers", "", "SELECT name FROM customer WHERE city = 'Nairobi' ORDER BY name", "simple", db)
     flipped = next(c for c in build(question)[0] if c.op == "flip_order")
     assert flipped.label == "unclear"
+
+
+def test_extra_duplicates_count_as_wrong_only_when_the_question_asks_for_distinct(db, tmp_path):
+    conn = sqlite3.connect(db)
+    conn.execute("INSERT INTO customer VALUES (5, 'Amina', 'Kisumu')")
+    conn.commit()
+    conn.close()
+    sql = "SELECT DISTINCT name FROM customer"
+    asks = Question(3, "shop", "List the distinct customer names", "", sql, "simple", db)
+    plain = Question(4, "shop", "List the customer names", "", sql, "simple", db)
+    assert next(c for c in build(asks)[0] if c.op == "drop_distinct").label == "wrong"
+    assert next(c for c in build(plain)[0] if c.op == "drop_distinct").label == "unclear"
