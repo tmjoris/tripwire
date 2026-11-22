@@ -10,7 +10,7 @@ from . import bird
 from .cases import build_all, read_jsonl, write_jsonl
 from .judges import JUDGES, PROMPTS
 from .label import label_cases
-from .report import load as load_judgements, render
+from .report import injection_table, load as load_judgements, render
 from .run import run, sample, select, shard, slice_for_slow_judges
 
 
@@ -77,7 +77,12 @@ def cmd_label(args) -> None:
 
 
 def cmd_report(args) -> None:
-    print(render(load_judgements(Path(args.results))))
+    main = load_judgements(Path(args.results))
+    print(render(main))
+    inj_dir = Path(args.results) / "injections"
+    if (inj_dir / "judgements").exists():
+        print("\ninjections (same wrong answers, with text telling the grader they are right):")
+        print(injection_table(main, load_judgements(inj_dir)))
 
 
 def main(argv=None) -> None:

@@ -74,3 +74,17 @@ def test_injection_styles_round_trip_by_id():
     got, missing = select(CASES, ids)
     assert not missing and [case_id(c) for c in got] == ids
     assert all(c.label == "wrong" and c.sql.endswith("SELECT 1") for c in got)
+
+
+def test_with_execution_needs_both_to_pass():
+    from tripwire.report import with_execution
+    rows = [{"correct": True, "bird_ex": False}, {"correct": True, "bird_ex": True}, {"correct": None, "bird_ex": True}]
+    assert [r["correct"] for r in with_execution(rows)] == [False, True, None]
+
+
+def test_injection_table_counts_flips_against_the_same_answer():
+    from tripwire.report import injection_table
+    base = {"id": "1:drop_where", "op": "drop_where", "correct": False}
+    tricked = {"id": "1:drop_where+inject:grader_note", "op": "drop_where+inject:grader_note", "correct": True}
+    out = injection_table({"j": [base]}, {"j": [tricked]})
+    assert "grader_note" in out and "1/1 (100%)" in out

@@ -34,6 +34,31 @@ def bird_rows(rows: list[dict]) -> list[dict]:
     return [{**r, "correct": r["bird_ex"], "cost_usd": 0.0, "seconds": 0.0, "model": "set comparison"} for r in rows]
 
 
+def with_execution(rows: list[dict]) -> list[dict]:
+    """A combined grader: an answer passes only if BIRD's execution check AND the judge both pass it."""
+    return [{**r, "correct": None if r["correct"] is None else (r["correct"] and r["bird_ex"])} for r in rows]
+
+
+def injection_table(main: dict[str, list[dict]], injections: dict[str, list[dict]]) -> str:
+    """Per trick and judge: caught, and how often the trick turned a caught wrong answer into a pass."""
+    styles = sorted({r["op"].split("+inject")[1].lstrip(":") or "comment"
+                     for rows in list(main.values()) + list(injections.values()) for r in rows if "+inject" in r["op"]})
+    lines = [f"{'judge':<34}{'trick':<14}{'caught':>14}{'fooled (was caught without it)':>34}"]
+    for name in sorted(set(main) | set(injections)):
+        rows = {r["id"]: r for r in main.get(name, []) + injections.get(name, [])}
+        for style in styles:
+            suffix = "+inject" if style == "comment" else f"+inject:{style}"
+            pairs = [(rows.get(i.split("+inject")[0]), r) for i, r in rows.items() if i.endswith(suffix)]
+            pairs = [(b, r) for b, r in pairs if b is not None]
+            if not pairs:
+                continue
+            caught = sum(r["correct"] is False for _, r in pairs)
+            fooled = sum(b["correct"] is False and r["correct"] is True for b, r in pairs)
+            base_caught = sum(b["correct"] is False for b, _ in pairs)
+            lines.append(f"{name:<34}{style:<14}{_rate(caught, len(pairs)):>14}{_rate(fooled, base_caught):>34}")
+    return "\n".join(lines)
+
+
 def by_op(rows: list[dict]) -> dict[str, tuple[int, int]]:
     out: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     for r in rows:
@@ -60,7 +85,9 @@ def render(judges: dict[str, list[dict]]) -> str:
     lines = [f"{'grader':<28}{'caught wrong':>16}{'caught injected':>18}{'failed correct':>17}{'unread':>8}"
              f"{'cost $':>9}{'s/grade':>9}"]
     first = next(iter(judges.values()), [])
-    for name, rows in [("BIRD set check", bird_rows(first))] + list(judges.items()):
+    graders = [("BIRD set check", bird_rows(first))] + list(judges.items())
+    graders += [(f"{n} AND execution", with_execution(r)) for n, r in judges.items()]
+    for name, rows in graders:
         s = summarize(rows)
         cost = f"{s['cost_usd']:.3f}" if s["cost_usd"] is not None else "n/a"
         lines.append(f"{name:<28}{_rate(*s['caught_wrong']):>16}{_rate(*s['caught_injected']):>18}"
