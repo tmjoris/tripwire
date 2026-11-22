@@ -126,10 +126,10 @@ class OllamaJudge(Judge):
 
     def ask(self, prompt):
         body = {"model": self.model, "prompt": prompt, "stream": False, "format": "json",
-                "options": {"temperature": 0, "num_ctx": 8192}}
+                "options": {"temperature": 0, "num_ctx": 4096}}
         req = urllib.request.Request(f"{self.url}/api/generate", data=json.dumps(body).encode(),
                                      headers={"Content-Type": "application/json"})
-        d = json.load(urllib.request.urlopen(req, timeout=600))
+        d = json.load(urllib.request.urlopen(req, timeout=1800))
         return d.get("response", ""), 0.0, self.model
 
 

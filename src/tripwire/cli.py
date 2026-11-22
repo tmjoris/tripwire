@@ -57,9 +57,14 @@ def cmd_judge(args) -> None:
 
 
 def cmd_label(args) -> None:
-    unclear = [c for c in read_jsonl(Path(args.cases)) if c.label == "unclear"]
+    cases = read_jsonl(Path(args.cases))
+    # Two queues: cases the rules couldn't decide, then correct answers that some judge rejected (often because
+    # the judge disagrees with BIRD's own reference; a person settles who is right). Judge reasons stay hidden.
+    disputed = {r["id"] for rows in load_judgements(Path(args.results)).values() for r in rows
+                if r["label"] == "correct" and r["correct"] is False}
+    queue = [c for c in cases if c.label == "unclear"] + [c for c in cases if f"{c.qid}:{c.op}" in disputed]
     dbs = {q.db_id: q.db_path for q in bird.load(Path(args.data))}
-    label_cases(unclear, dbs, Path(args.results) / "human_labels.jsonl")
+    label_cases(queue, dbs, Path(args.results) / "human_labels.jsonl")
 
 
 def cmd_report(args) -> None:
