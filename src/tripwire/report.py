@@ -12,8 +12,8 @@ def _rate(hits: int, n: int) -> str:
 
 
 def summarize(rows: list[dict]) -> dict:
-    wrong = [r for r in rows if r["label"] == "wrong" and not r["op"].endswith("+inject")]
-    injected = [r for r in rows if r["op"].endswith("+inject")]
+    wrong = [r for r in rows if r["label"] == "wrong" and "+inject" not in r["op"]]
+    injected = [r for r in rows if "+inject" in r["op"]]
     correct = [r for r in rows if r["label"] == "correct"]
     readable = [r for r in rows if r["correct"] is not None]
     costs = [r["cost_usd"] for r in rows if r.get("cost_usd") is not None]

@@ -66,3 +66,11 @@ def test_shards_cover_everything_once():
     from tripwire.run import shard
     parts = [shard(CASES, f"{k}/4") for k in range(4)]
     assert sorted(case_id(c) + c.kind for p in parts for c in p) == sorted(case_id(c) + c.kind for c in CASES)
+
+
+def test_injection_styles_round_trip_by_id():
+    from tripwire.run import INJECTIONS, select
+    ids = [f"3:drop_where+inject:{s}" for s in INJECTIONS if s != "comment"] + ["3:drop_where+inject"]
+    got, missing = select(CASES, ids)
+    assert not missing and [case_id(c) for c in got] == ids
+    assert all(c.label == "wrong" and c.sql.endswith("SELECT 1") for c in got)
