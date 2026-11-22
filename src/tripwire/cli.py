@@ -8,7 +8,7 @@ from pathlib import Path
 
 from . import bird
 from .cases import build_all, read_jsonl, write_jsonl
-from .judges import JUDGES
+from .judges import JUDGES, PROMPTS
 from .label import label_cases
 from .report import load as load_judgements, render
 from .run import run, sample, select, shard, slice_for_slow_judges
@@ -54,14 +54,15 @@ def cmd_judge(args) -> None:
         cases = shard(cases, args.shard)
     judge = JUDGES[args.judge](args.model) if args.model else JUDGES[args.judge]()
     dbs = {q.db_id: q.db_path for q in bird.load(Path(args.data))}
-    out = Path(args.results) / "judgements" / f"{judge.name}.jsonl"
+    suffix = "" if args.prompt == "baseline" else f"+{args.prompt}"
+    out = Path(args.results) / "judgements" / f"{judge.name}{suffix}.jsonl"
     print(f"{judge.name}: {len(cases)} cases -> {out}", flush=True)
 
     def progress(done, total, row):
         if done % 10 == 0 or done == total:
             print(f"  {done}/{total}", flush=True)
 
-    run(judge, cases, dbs, out, workers=args.workers, progress=progress)
+    run(judge, cases, dbs, out, workers=args.workers, progress=progress, template=PROMPTS[args.prompt])
 
 
 def cmd_label(args) -> None:
@@ -100,6 +101,8 @@ def main(argv=None) -> None:
     j.add_argument("--ids", default="samples/judge-sample.txt", help="file of case ids to judge (default: the committed sample)")
     j.add_argument("--shard", default="", help="k/n: judge only every n-th case starting at k")
     j.add_argument("--model", default="", help="model name for the judge (e.g. qwen2.5-coder:7b)")
+    j.add_argument("--prompt", choices=sorted(PROMPTS), default="baseline",
+                   help="baseline, hardened (ignore notes in the SQL), or data (hardened + a sample of the data)")
     j.set_defaults(func=cmd_judge)
     lb = sub.add_parser("label", help="label the unclear cases yourself, one at a time")
     lb.add_argument("--cases", default="results/cases.jsonl")
