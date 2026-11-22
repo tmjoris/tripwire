@@ -10,6 +10,7 @@ from . import bird
 from .cases import build_all, read_jsonl, write_jsonl
 from .judges import JUDGES, PROMPTS
 from .label import label_cases
+from .export import export
 from .report import injection_table, load as load_judgements, render
 from .run import run, sample, select, shard, slice_for_slow_judges
 
@@ -85,6 +86,12 @@ def cmd_report(args) -> None:
         print(injection_table(main, load_judgements(inj_dir)))
 
 
+def cmd_export(args) -> None:
+    dbs = {q.db_id: q.db_path for q in bird.load(Path(args.data))}
+    d = export(Path(args.results), Path(args.cases), dbs, args.walkthrough, Path(args.out))
+    print(f"wrote {args.out}: {len(d['graders'])} graders, {len(d['walkthrough']['versions'])} walkthrough versions")
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="tripwire", description="Test AI graders with look-alike wrong answers.")
     sub = p.add_subparsers(required=True)
@@ -114,6 +121,13 @@ def main(argv=None) -> None:
     lb.add_argument("--data", default="data")
     lb.add_argument("--results", default="results")
     lb.set_defaults(func=cmd_label)
+    e = sub.add_parser("export", help="write the results page's data file")
+    e.add_argument("--results", default="results")
+    e.add_argument("--cases", default="results/cases.jsonl")
+    e.add_argument("--data", default="data")
+    e.add_argument("--walkthrough", type=int, default=357, help="question id followed in the walkthrough")
+    e.add_argument("--out", default="report/public/data.json")
+    e.set_defaults(func=cmd_export)
     r = sub.add_parser("report", help="summarise all judge results")
     r.add_argument("--results", default="results")
     r.set_defaults(func=cmd_report)
