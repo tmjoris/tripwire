@@ -23,7 +23,6 @@ Question 357 asks about BIRD's superhero database:
 BIRD's own correct SQL returns **156,709.1**. (A few heroes in this dataset are absurdly heavy, which is why the
 average is so high.)
 
-![The question](docs/screenshots/02-question.png)
 ![The correct answer and its result](docs/screenshots/03-correct-answer.png)
 
 ### 2. A one-character bug the AI judges can't see
