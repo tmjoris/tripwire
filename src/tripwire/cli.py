@@ -9,6 +9,7 @@ from pathlib import Path
 from . import bird
 from .cases import build_all, read_jsonl, write_jsonl
 from .judges import JUDGES
+from .label import label_cases
 from .report import load as load_judgements, render
 from .run import run, sample, slice_for_slow_judges
 
@@ -55,6 +56,12 @@ def cmd_judge(args) -> None:
     run(judge, cases, dbs, out, workers=args.workers, progress=progress)
 
 
+def cmd_label(args) -> None:
+    unclear = [c for c in read_jsonl(Path(args.cases)) if c.label == "unclear"]
+    dbs = {q.db_id: q.db_path for q in bird.load(Path(args.data))}
+    label_cases(unclear, dbs, Path(args.results) / "human_labels.jsonl")
+
+
 def cmd_report(args) -> None:
     print(render(load_judgements(Path(args.results))))
 
@@ -78,6 +85,11 @@ def main(argv=None) -> None:
     j.add_argument("--seed", type=int, default=7)
     j.add_argument("--small", type=int, default=0, help="grade only a smaller slice of N cases (slow judges)")
     j.set_defaults(func=cmd_judge)
+    lb = sub.add_parser("label", help="label the unclear cases yourself, one at a time")
+    lb.add_argument("--cases", default="results/cases.jsonl")
+    lb.add_argument("--data", default="data")
+    lb.add_argument("--results", default="results")
+    lb.set_defaults(func=cmd_label)
     r = sub.add_parser("report", help="summarise all judge results")
     r.add_argument("--results", default="results")
     r.set_defaults(func=cmd_report)
