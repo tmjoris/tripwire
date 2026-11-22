@@ -1,0 +1,67 @@
+# Grades the committed sample with an open model through Ollama, on four runners in parallel.
+# Run it by hand from the Actions tab ("Run workflow"); each shard uploads its verdicts as an artifact.
+name: Judge with a local model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Ollama model"
+        default: "qwen2.5-coder:7b"
+
+permissions:
+  contents: read
+
+jobs:
+  judge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      MODEL: ${{ inputs.model }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Cache BIRD Mini-Dev
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/raw
+            data/bird-2026
+          key: bird-minidev-cc48ba16-926af2a0
+
+      - name: Download BIRD Mini-Dev and check it against the verified copy
+        run: |
+          mkdir -p data/raw data/bird-2026
+          [ -f data/raw/minidev.zip ] || curl -fsSL -o data/raw/minidev.zip \
+            https://huggingface.co/datasets/egtimer/bird-minidev-databases/resolve/main/minidev.zip
+          [ -f data/bird-2026/mini_dev_sqlite.jsonl ] || curl -fsSL -o data/bird-2026/mini_dev_sqlite.jsonl \
+            https://huggingface.co/datasets/birdsql/bird_mini_dev/resolve/main/data/mini_dev_sqlite.jsonl
+          echo "cc48ba16838204e4e214512030cb572eeb5f7bcdd999bae4b9b6ff12ec13b92f  data/raw/minidev.zip" | sha256sum -c -
+          echo "926af2a0d1b47e5d0d15a7aa8a34d4721007f4550a881555b6a89496b54a2606  data/bird-2026/mini_dev_sqlite.jsonl" | sha256sum -c -
+          unzip -q data/raw/minidev.zip -d data/bird
+
+      - name: Install Ollama and the model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          curl -sf http://127.0.0.1:11434 >/dev/null || (nohup ollama serve > /tmp/ollama.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:11434 >/dev/null && break; sleep 1; done
+          ollama pull "$MODEL"
+
+      - name: Build the cases
+        run: uv run tripwire build --workers 4 --timeout 20
+
+      - name: Judge this shard
+        run: uv run tripwire judge --judge ollama --model "$MODEL" --shard "${{ matrix.shard }}/4" --workers 1
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judgements-shard-${{ matrix.shard }}
+          path: results/judgements/
+          if-no-files-found: error
