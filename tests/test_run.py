@@ -53,3 +53,16 @@ def test_run_resumes_and_summary_counts(tmp_path, monkeypatch):
     assert summary["caught_wrong"] == (0, 3) and summary["caught_injected"] == (0, 2)
     assert summary["failed_correct"] == (0, 6)
     assert summarize(bird_rows(rows))["caught_wrong"] == (3, 3)
+
+
+def test_select_rebuilds_injected_cases_and_reports_missing():
+    from tripwire.run import select
+    got, missing = select(CASES, ["0:reference", "3:drop_where+inject", "999:reference"])
+    assert [case_id(c) for c in got] == ["0:reference", "3:drop_where+inject"]
+    assert got[1].sql.startswith(INJECTION) and missing == ["999:reference"]
+
+
+def test_shards_cover_everything_once():
+    from tripwire.run import shard
+    parts = [shard(CASES, f"{k}/4") for k in range(4)]
+    assert sorted(case_id(c) + c.kind for p in parts for c in p) == sorted(case_id(c) + c.kind for c in CASES)

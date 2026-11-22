@@ -122,7 +122,8 @@ class CopilotJudge(Judge):
 
 class OllamaJudge(Judge):
     def __init__(self, model: str = "qwen2.5-coder:7b", url: str = "http://127.0.0.1:11434"):
-        self.model, self.url, self.name = model, url, f"ollama-{model}"
+        self.model, self.url = model, url
+        self.name = f"ollama-{model.replace(':', '-')}"    # ':' is not allowed in artifact file names
 
     def ask(self, prompt):
         body = {"model": self.model, "prompt": prompt, "stream": False, "format": "json",

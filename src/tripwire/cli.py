@@ -11,7 +11,7 @@ from .cases import build_all, read_jsonl, write_jsonl
 from .judges import JUDGES
 from .label import label_cases
 from .report import load as load_judgements, render
-from .run import run, sample, slice_for_slow_judges
+from .run import run, sample, select, shard, slice_for_slow_judges
 
 
 def cmd_build(args) -> None:
@@ -41,10 +41,18 @@ def cmd_build(args) -> None:
 
 
 def cmd_judge(args) -> None:
-    cases = sample(read_jsonl(Path(args.cases)), seed=args.seed)
+    all_cases = read_jsonl(Path(args.cases))
+    if args.ids and Path(args.ids).exists():      # the committed sample list: every machine judges the same cases
+        cases, missing = select(all_cases, Path(args.ids).read_text().split())
+        if missing:
+            print(f"warning: {len(missing)} sampled ids not in this build: {missing[:5]}")
+    else:
+        cases = sample(all_cases, seed=args.seed)
     if args.small:
         cases = slice_for_slow_judges(cases, n=args.small, seed=args.seed)
-    judge = JUDGES[args.judge]()
+    if args.shard:
+        cases = shard(cases, args.shard)
+    judge = JUDGES[args.judge](args.model) if args.model else JUDGES[args.judge]()
     dbs = {q.db_id: q.db_path for q in bird.load(Path(args.data))}
     out = Path(args.results) / "judgements" / f"{judge.name}.jsonl"
     print(f"{judge.name}: {len(cases)} cases -> {out}", flush=True)
@@ -89,6 +97,9 @@ def main(argv=None) -> None:
     j.add_argument("--workers", type=int, default=3)
     j.add_argument("--seed", type=int, default=7)
     j.add_argument("--small", type=int, default=0, help="grade only a smaller slice of N cases (slow judges)")
+    j.add_argument("--ids", default="samples/judge-sample.txt", help="file of case ids to judge (default: the committed sample)")
+    j.add_argument("--shard", default="", help="k/n: judge only every n-th case starting at k")
+    j.add_argument("--model", default="", help="model name for the judge (e.g. qwen2.5-coder:7b)")
     j.set_defaults(func=cmd_judge)
     lb = sub.add_parser("label", help="label the unclear cases yourself, one at a time")
     lb.add_argument("--cases", default="results/cases.jsonl")

@@ -48,6 +48,27 @@ def sample(cases: list[Case], seed: int = 7, refs: int = 40, per_equivalent: int
     return out
 
 
+def select(cases: list[Case], ids: list[str]) -> tuple[list[Case], list[str]]:
+    """The cases named by id, in that order ("+inject" ids are rebuilt from their base case). Also the ids not found."""
+    by_id = {case_id(c): c for c in cases}
+    out, missing = [], []
+    for i in ids:
+        base = by_id.get(i.removesuffix("+inject"))
+        if base is None:
+            missing.append(i)
+        else:
+            out.append(inject(base) if i.endswith("+inject") else base)
+    return out, missing
+
+
+def shard(cases: list[Case], spec: str) -> list[Case]:
+    """"k/n": every n-th case starting at k, so n machines can share one sample."""
+    k, n = (int(x) for x in spec.split("/"))
+    if not 0 <= k < n:
+        raise ValueError(f"bad shard {spec!r}: need 0 <= k < n")
+    return cases[k::n]
+
+
 def slice_for_slow_judges(cases: list[Case], n: int = 40, seed: int = 7) -> list[Case]:
     """A smaller sample with every operator still represented, for judges that take a minute per grade."""
     rng = random.Random(seed)
